@@ -15,7 +15,7 @@ import os
 
 print("🚀 Starting the Flask application...")
 app = Flask(__name__, template_folder='templates')
-df_input = pd.read_csv("data/airlines_review.csv")
+df_input = pd.read_csv("data/airlines_review.csv") #Change to airlines_review_no_space when visualising Requirement 6
 
 
 if not os.path.exists("data/airlines_review_analysis.csv"):  # Checks if .csv already exists
@@ -29,7 +29,7 @@ else:
         
 print("📊 Loading data...")
 df = pd.read_csv("data/airlines_review_analysis.csv")
-df['Date Published'] = pd.to_datetime(df['Date Published'],dayfirst = True)
+df['Date Published'] = pd.to_datetime(df['Date Published'],dayfirst = False)
 
 # --- Define dropdown options ---
 order_of_months = ['January','February','March','April','May','June','July',

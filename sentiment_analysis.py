@@ -37,6 +37,23 @@ def replace_missing_value(df):
     return 
 
 def remove_special_characters(df, removechar, char):
+    """
+    Function used in -> load_and_clean_data().
+    Removes a predefined list of noise characters from specific text columns.
+
+    - Characters are replaced with a single space in the 'Airlines' column 
+      to prevent word concatenation.
+    - Characters are completely removed (replaced with an empty string) in 
+      the 'Text Content' column.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to process.
+        removechar (list): A list of strings/characters to search for and remove.
+        char (str): An unused parameter (retained from original signature).
+        
+    Returns:
+        pd.DataFrame: The DataFrame with characters removed from specified columns.
+    """
     for char in removechar:
         df['Airlines'] = df['Airlines'].str.replace(char, ' ', regex=False)
         df['Text Content'] = df['Text Content'].str.replace(char, '', regex=False)
@@ -44,18 +61,23 @@ def remove_special_characters(df, removechar, char):
 
 def load_and_clean_data(df):
     #df = pd.read_csv(PATH)
+    
+    # Remove duplicates and NaNs
     df = df.drop_duplicates()
     df = df.dropna()
     
+    # Characters to remove
     removechar = [ '@', '#', '$', '%', '^', '&', '*', '(', ')',
                    '-', '_', '=', '+', '{', '}', '[', ']', '|',
                    '\\', ':', ';', '"', "'", '<', '>', '?',
                    '/', '~', '`', '✅ Trip Verified', 'Not Verified',
                    'Â Â', '✅ Verified Review']
     
+    # Apply cleaning functions
     replace_missing_value(df)
     remove_special_characters(df, removechar, char='')
 
+    # Standardize text case
     df['Airlines'] = df['Airlines'].str.title()
     df['Name'] = df['Name'].str.title()
     df['Text Content Lower Case'] = df['Text Content'].str.lower()
@@ -74,6 +96,17 @@ def load_and_clean_data(df):
 
 '''Start of Req 6: Word Segmentation using Dynamic Programming'''
 def load_dictionary(dict_path):
+    """
+    Loads a word list from a file into a set for fast lookup.
+    The function reads a file line by line, strips whitespace, converts
+    each word to lowercase, and adds it to a set.
+
+    Args:
+        dict_path (str): The file path to the dictionary file,
+                         with one word per line.
+    Returns:
+        set: A set containing all unique words from the file in lowercase.
+    """
     words = set()
     with open(dict_path, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f:
@@ -84,6 +117,24 @@ def load_dictionary(dict_path):
     return words
 
 def segment_text(text, dictionary, max_word_length=30, unknown_penalty=1):
+    """
+    Segments a string (with no spaces) into a sequence of known words using 
+    a Dynamic Programming (DP) approach.
+
+    The DP algorithm finds the highest-scoring segmentation based on word 
+    existence in the dictionary and applies a penalty for unknown words.
+
+    Args:
+        text (str or None): The concatenated string to be segmented.
+        dictionary (set): A set of valid words for lookup (e.g., from load_dictionary).
+        max_word_length (int, optional): The maximum length to consider for a word 
+                                         segment. Defaults to 30.
+        unknown_penalty (int, optional): The score penalty applied for each 
+                                         character of an unknown word. Defaults to 1.
+    Returns:
+        str: The segmented string, with spaces between identified words. 
+             Returns the original text if no segmentation can be found.
+    """
     if text is None:
         return ""
     s = text.strip()
@@ -131,6 +182,22 @@ def segment_text(text, dictionary, max_word_length=30, unknown_penalty=1):
     return ' '.join(tokens)
 
 def call_dynamic_prog(df):
+    """
+    Applies word segmentation to the 'Text Content' column of a DataFrame 
+    using Dynamic Programming, but only if unsegmented (concatenated) text is detected.
+
+    The function first loads the word dictionary, determines the optimal segmentation 
+    parameters, and then applies the 'segment_text' function to the column, 
+    replacing the original content with the segmented text.
+
+    Args:
+        df (pd.DataFrame): The pandas DataFrame containing the 'Text Content' 
+                           column to be segmented.
+    Returns:
+        pd.DataFrame: The DataFrame with the 'Text Content' column updated 
+                      with segmented strings (or unchanged if no segmentation 
+                      was necessary).
+    """
     # Ensure the column is string type
     df['Text Content'] = df['Text Content'].astype(str)
     
@@ -151,7 +218,8 @@ def call_dynamic_prog(df):
 
         # Replace the 'Text Content' column with the segmented version
         df['Text Content'] = df['Text Content'].astype(str).apply(
-            lambda t: segment_text(t, dictionary, max_word_length=max_word_length, unknown_penalty=1)
+            lambda t: segment_text(t, dictionary, max_word_length=max_word_length, 
+                                   unknown_penalty=1)
         )
 
         df.to_csv('data/airlines_review_analysis.csv', index=False)    
@@ -167,7 +235,13 @@ def call_dynamic_prog(df):
 def tokenize_sentences(text):
     '''
     Function for Sentence tokanization. This function takes some text and returns a list of sentences. 
-    If you don’t give it a string, it safely returns an empty list instead of crashing.
+    If you dont give it a string, it safely returns an empty list instead of crashing.
+    
+    Args:
+        text (str): The input text to be tokenized.
+    Returns:
+        list: A list of strings, where each string is a sentence. Returns an empty list if input is not a string.
+    
     '''
     if not isinstance(text, str):
         return []
@@ -176,7 +250,13 @@ def tokenize_sentences(text):
 
 def calculate_sentiment_score(sentences, afinn_dict):
     '''
-    Calculates the sentiment score
+    Calculates the raw sentiment score of a given text segment by summing up AFINN scores of individual words.
+
+    Args:
+        sentences (str): The text segment (sentence, paragraph, or full text) to score.
+        afinn_dict (dict): The AFINN sentiment lexicon (word: score mapping).
+    Returns:
+        int/float: The total raw sentiment score for the text segment.
     '''
     score = 0
     words = sentences.lower().split()    # breaks down the sentence into individual words
@@ -187,7 +267,14 @@ def calculate_sentiment_score(sentences, afinn_dict):
 
 def normalize_score(score, text_length):
     '''
-    Calculates the normalization score
+    Calculates the normalized sentiment score by dividing the raw score by the text length,
+    and clamps the result to the range [-1.0, 1.0].
+
+    Args:
+        score (int/float): The raw sentiment score calculated by calculate_sentiment_score.
+        text_length (int): The number of words in the text segment.
+    Returns:
+        float: The normalized sentiment score, clamped between -1.0 and 1.0.
     '''
     if text_length == 0:    # sentences with no words will return a score of 0 (preventing an error of dividing by zero)
         return 0
@@ -204,8 +291,14 @@ def find_extreme_sentences(sentences, afinn_dict):
     1. Calculates sentiment scores for each sentence using the AFINN lexicon.
     2. Normalizes the sentiment scores based on sentence length.
     3. Identifies and returns the sentences with the highest and lowest normalized scores.
-    '''
     
+    Args:
+        sentences (list): A list of strings, where each string is a sentence.
+        afinn_dict (dict): The AFINN sentiment lexicon (word: score mapping).
+    Returns:
+        tuple: A tuple (most_positive, most_negative), where each element is a dictionary
+               like {'sentence': str, 'score': float}. Returns (None, None) if the input list is empty.
+    '''
     if not sentences:   # to prevent errors if the list is empty
         return None, None
 
@@ -268,7 +361,15 @@ def sliding_window_analysis_words(text, afinn_dict, window_size=10):
 '''---------------------- Applying analysis to the dataframe ---------------------- '''
 def run_sentiment_analysis(df, afinn_dict):
     '''
-    Apply Analysis to DataFrame
+    Applies all sentiment analysis functions (tokenization, scoring, normalization, 
+    extreme sentence finding, and sliding window analysis) to a Pandas DataFrame.
+    It adds 10 new columns containing all the analysis results.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing a 'Text Content' column.
+        afinn_dict (dict): The AFINN sentiment lexicon (word: score mapping).
+    Returns:
+        pd.DataFrame: The original DataFrame with all sentiment analysis results added as new columns.
     '''
     print("🏃 Running Sentiment Analysis...")
     
@@ -282,22 +383,20 @@ def run_sentiment_analysis(df, afinn_dict):
     df['Normalized Sentiment Score'] = df.apply(lambda x: normalize_score(x['Sentiment Score'],len(x["Text Content"].split())), axis=1)
 
     #Apply finding extreme sentences function to Dataframe
-    df['Extreme Senctences'] = df.apply(lambda x: find_extreme_sentences(x['Text Content Tokenized'],afinn_dict), axis=1)
+    df['Extreme Sentences'] = df.apply(lambda x: find_extreme_sentences(x['Text Content Tokenized'],afinn_dict), axis=1)
 
     #Creating Columns for Most and Least Extreme Sentences with checks
-    df['Most Positive Senctence'] = df['Extreme Senctences'].apply(
+    df['Most Positive Senctence'] = df['Extreme Sentences'].apply(
         lambda x: x[0]['sentence'] if x and isinstance(x, tuple) and x[0] is not None else None)
-    df['Most Positive Senctence Score'] = df['Extreme Senctences'].apply(
+    df['Most Positive Senctence Score'] = df['Extreme Sentences'].apply(
         lambda x: x[0]['score'] if x and isinstance(x, tuple) and x[0] is not None else None)
-    df['Most Negative Senctence'] = df['Extreme Senctences'].apply(
+    df['Most Negative Senctence'] = df['Extreme Sentences'].apply(
         lambda x: x[1]['sentence'] if x and isinstance(x, tuple) and x[1] is not None else None)
-    df['Most Negative Senctence Score'] = df['Extreme Senctences'].apply(
+    df['Most Negative Senctence Score'] = df['Extreme Sentences'].apply(
         lambda x: x[1]['score'] if x and isinstance(x, tuple) and x[1] is not None else None)
-
 
     #Applying Sliding Window to Dataframe
     df['Sliding Window Results'] = df.apply(lambda x: sliding_window_analysis_words(x['Text Content'],afinn_dict, window_size=10), axis=1)
-
 
     #Creating Columns for Most Positive and Negative lines of words from sliding window analysis
     df['Most Positive Line'] = df['Sliding Window Results'].apply(lambda x: x[0]['paragraph'])
@@ -311,6 +410,15 @@ def run_sentiment_analysis(df, afinn_dict):
     return df
 
 def full_pipeline(df):
+    '''
+    The main execution function that runs the entire sentiment analysis workflow.
+    (Note: The body of this function is incomplete but its role is to drive the process.)
+
+    Args:
+        df (pd.DataFrame): The raw input DataFrame that needs analysis.
+    Returns:
+        pd.DataFrame: The fully analyzed DataFrame returned by run_sentiment_analysis.
+    '''
     afinn_dict = load_afinn_lexicon("data/AFINN-en-165.txt")
     df = call_dynamic_prog(df)
     df = load_and_clean_data(df)
