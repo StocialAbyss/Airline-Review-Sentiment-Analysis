@@ -1,94 +1,139 @@
 # Airline Review Sentiment Analysis
 
-**Python | Pandas | Matplotlib | NLP | Exploratory visualisation | Evaluation**
+**Python | Pandas | Matplotlib | NLP | Flask**
 
-A five-person Singapore Institute of Technology academic team project for **INF1002: Programming Fundamentals**, Team P4-4. The project processes airline reviews, applies AFINN lexicon-based sentiment analysis, and explores the results through charts and a Flask review interface.
+An academic team project for **INF1002: Programming Fundamentals** at the Singapore Institute of Technology, Team P4-4.
 
-The analytical question is how sentiment expressed in the collected reviews compares across airlines and over time, and how a ranking derived from those reviews differs from the external ranking recorded in the project.
+The project turns airline review text into sentiment scores, compares patterns across airlines and over time, and presents selected reviews through a Flask web interface. The workflow covers data collection, cleaning, text analysis, evaluation and visual explanation.
 
-## My contribution
+## What question does the project answer?
 
-I am **Daryl Lai Weng Hong**, GitHub [StocialAbyss](https://github.com/StocialAbyss). My recorded contributions include:
+How do passengers describe their airline experiences, and what patterns become visible when those reviews are analysed together?
 
-- Adding and updating `visualisations.py`, using Pandas to aggregate results and Matplotlib to produce comparative charts.
-- Adding saved ranking-comparison charts, sentiment-distribution boxplots and monthly sentiment trends.
-- Adding evaluation calculations and exported accuracy, precision, recall and F1 results using rating-derived reference labels.
+The project explores how average sentiment differs between airlines, how much reviews vary within each airline, how sentiment changes over time, and how a review-derived ranking compares with the external Skytrax ranking recorded in the project.
 
-For traceable examples, see my [visualisation implementation commit](https://github.com/DyanelLancea/Airline-Review-Sentiment-Analysis/commit/03ca83d07f25b4f99ac989c4b87991c6033e6890) and [follow-up changes](https://github.com/DyanelLancea/Airline-Review-Sentiment-Analysis/commit/227baeadde0aa1c0cb8fdccbbaea2c0134d73662).
+## 1. Collect and prepare the reviews
 
-The sentiment pipeline, data cleaning, web interface and other algorithms are shared project components. This portfolio does not claim that I independently built the entire application.
+The data-collection and cleaning code prepares review text, airline names, ratings and publication dates for analysis. The repository includes raw, cleaned and analysed CSV files.
 
-## Selected visualisations
+Preparing consistent fields makes it possible to group reviews by airline, organise results by month and compare text-derived sentiment with ratings. A separate dynamic-programming component supports word segmentation for text containing missing spaces.
+
+## 2. Calculate sentiment and identify review passages
+
+The sentiment pipeline uses the **AFINN lexicon**, which maps recognised words to positive or negative scores.
+
+1. Split review text into words and look up their sentiment scores.
+2. Sum the word scores to produce a raw review score.
+3. Divide by the word count and clamp the result to the range -1 to 1.
+4. Identify strongly positive and negative sentences and fixed-length word windows.
+5. Export the analysed reviews for visualisation and the web interface.
+
+An additional component uses Kadane's algorithm on sentence scores to find contiguous positive and negative sentence spans and export them to Excel.
+
+This is **lexicon-based sentiment analysis**: the application does not train a new language model or use generative AI to write its findings.
+
+## 3. Compare airlines through graphs
 
 ### External ranking versus sentiment-derived ranking
 
-![Horizontal bars comparing the recorded external airline ranking with the ranking derived from average review sentiment](visualisations/Official_vs_Sentiment.png)
+![Grouped horizontal bars comparing external airline ranks with sentiment-derived ranks](visualisations/Official_vs_Sentiment.png)
 
-The grouped bars make disagreements between the two rankings visible. For example, Hainan Airlines is ranked tenth in the recorded external list but first by average sentiment in this review sample. This is a comparison of different measures and samples, not evidence that either ranking is incorrect or that one airline is objectively best. Lower rank numbers are better.
+Average normalised sentiment is calculated for each airline and converted into a ranking. The grouped bars then compare that ranking with the external list recorded in the project. **A smaller rank number is better.**
 
-### Sentiment distributions by airline
+The chart makes differences easy to identify. For example, Hainan Airlines appears tenth in the external list but first in the review-derived ranking. This highlights disagreement between two different measures; it does not establish that one ranking is correct or that the collected reviews represent every passenger.
 
-![Boxplots showing the distribution of normalised review sentiment for each airline](visualisations/boxplot_sentiment_consistency.png)
+### Distribution of sentiment within each airline
 
-The boxplots show the median and interquartile range, with green triangles marking means. They reveal variation that would be hidden by reporting only an average. Points outside the whiskers are statistical outliers, not automatically invalid reviews.
+![Boxplots of normalised review sentiment by airline, with median lines and green mean markers](visualisations/boxplot_sentiment_consistency.png)
 
-### Monthly sentiment trends
+Averages can hide substantial variation between reviews. These boxplots show the median, the middle 50% of scores and statistical outliers. Green triangles mark the means.
 
-![Monthly average sentiment with Singapore Airlines highlighted and other airlines shown faintly](visualisations/trend_spotlight.png)
+**What to look for:** differences in the centre, box width and tails. An airline can have a positive average while still receiving a wide range of reviews. Points beyond the whiskers are unusual relative to the distribution, rather than automatically being data errors.
 
-The chart highlights Singapore Airlines against the other airlines using a rolling average of monthly sentiment means. Interpretation should consider review counts, missing months and changes in the review sample. The code uses a three-row rolling window on the monthly index; a strict three-calendar-month interpretation requires checking for gaps.
+### Changes in monthly sentiment
 
-## How the team project works
+![Monthly sentiment trends with Singapore Airlines highlighted against other airlines](visualisations/trend_spotlight.png)
 
-1. Collect and prepare airline review data.
-2. Score review text using the AFINN sentiment lexicon and normalise scores by text length.
-3. Aggregate results by airline and time period for visual comparison.
-4. Compare predicted polarity with positive/negative labels derived from review ratings.
-5. Present review results through the Flask interface and export analysis outputs.
+Reviews are grouped into monthly average scores, then smoothed with a rolling window. Singapore Airlines is highlighted with a thicker line so its movement is easier to follow among the comparison airlines.
 
-This is lexicon-based NLP, not generative AI or a newly trained language model.
+The chart is useful for exploring changes that deserve further investigation. Review volumes, missing months and changes in the sample should be checked before attributing a rise or fall to a particular event. The implementation uses three rows of monthly observations; a strict three-calendar-month interpretation requires checking for gaps.
 
-## Repository guide
+### Relationship between external rank and average sentiment
 
-| File or directory | Purpose |
-| --- | --- |
-| `visualisations.py` | Chart generation, evaluation calculations and keyword-summary output. |
-| `visualisations/` | Saved charts, evaluation CSV and keyword summaries. |
-| `sentiment_analysis.py` | Shared preprocessing and sentiment-analysis functions. |
-| `data_cleaning.py` | Data-cleaning source. |
-| `main.py`, `templates/`, `static/` | Flask application and interface assets. |
-| `requirement5.py` | Positive/negative sentence-span analysis and Excel exports. |
-| `web_scraping/` | Data-collection source. |
-| `data/` | Review datasets and lexical resources. |
+![Scatterplot of external Skytrax rank against average review sentiment for ten airlines](visualisations/scatter_official_rank_vs_sentiment.png)
 
-## Reproduction
+Each point represents an airline. The vertical axis shows average normalised sentiment and the horizontal axis shows external rank; **rank 1 is on the right** in this saved chart.
 
-From the repository root, create a Python environment and install the packages needed for the component you are running. For the visualisation script, the imported third-party packages are `pandas`, `numpy`, `matplotlib`, `scipy`, `scikit-learn`, `wordcloud` and `nltk`. The web interface additionally requires `flask`; Excel exports require `openpyxl`.
+The displayed Pearson correlation is approximately **0.18**, indicating a weak linear relationship in this ten-airline comparison. The chart supports examining agreement between the measures, rather than assuming that a highly ranked airline must also have the highest sentiment in this sample.
 
-To regenerate charts from the included analysed CSV:
+### Additional text summaries
+
+The visualisation script also exports positive/negative word clouds and TF-IDF keyword summaries. These help explore the vocabulary used in reviews, but frequent terms alone do not establish the cause of a customer's experience.
+
+## 4. Evaluate sentiment classification
+
+The evaluation converts scores into positive/negative predictions and compares them with rating-derived labels:
+
+- Ratings **1-5** form the negative reference class.
+- Ratings **6-10** form the positive reference class.
+- Sentiment scores below zero are negative; scores of zero or above are positive.
+
+The [saved evaluation CSV](visualisations/Sentiment_Analysis_Metrics.csv) reports:
+
+| Metric | Saved result | What it describes |
+| --- | --- | --- |
+| Accuracy | 80.45% | Overall agreement with rating-derived labels. |
+| Precision | 77.72% | How often a positive prediction matches a positive reference label. |
+| Recall | 93.14% | How many positive reference labels are identified. |
+| F1 score | 84.73% | The balance between positive-class precision and recall. |
+
+These are saved project results, not a newly executed benchmark. Ratings are **proxy labels**, rather than independently annotated sentiment ground truth. Treating zero sentiment as positive also affects the evaluation.
+
+## 5. Explore reviews in the web interface
+
+The Flask application loads the analysed dataset and offers airline and month filters. It displays selected positive and negative reviews and lists leading airlines by average sentiment.
+
+The month filter groups by month name across the dataset; it is not a separate year-and-month selector. The interface lets readers connect an aggregate result with individual review examples.
+
+## Run the project
+
+From the repository root, install the packages needed for the relevant component. The plotting script imports `pandas`, `numpy`, `matplotlib`, `scipy`, `scikit-learn`, `wordcloud` and `nltk`. The web application also requires `flask`; Excel exports require `openpyxl`.
+
+Regenerate the visualisations from the included analysed CSV:
 
 ```sh
 python visualisations.py
 ```
 
-To start the existing web interface:
+Launch the local web interface:
 
 ```sh
 python main.py
 ```
 
-The app is configured for `http://127.0.0.1:5000`. Recomputing the NLP pipeline may require NLTK tokenisation resources appropriate to the installed NLTK version. A fresh end-to-end execution and dependency lockfile have not been verified for this portfolio copy.
+Open `http://127.0.0.1:5000`. Recomputing the NLP pipeline may require NLTK tokenisation resources appropriate to the installed version. These are source-based setup instructions; a fresh end-to-end installation has not been verified.
 
-## Evaluation and limitations
+## Repository guide
 
-- The evaluation reference converts review ratings of 1-5 into negative labels and 6-10 into positive labels. These are **proxy labels**, not independently annotated sentiment ground truth.
-- The evaluation code classifies a zero sentiment score as positive; this treatment of neutral text affects interpretation.
-- Reviews are a collected sample and do not represent every passenger. Unequal review counts, language, context and historical coverage can influence comparisons.
-- Lexicon scoring can miss negation, sarcasm and context. Correlation and ranking differences do not establish causation.
-- An existing chart-label issue remains: the diverging rank-difference chart title says sentiment rank minus official rank, while the code calculates official rank minus sentiment rank. The three selected charts above do not use that diverging-chart title.
+| Location | Contents |
+| --- | --- |
+| `web_scraping/` | Review collection code. |
+| `data_cleaning.py` | Data-cleaning code. |
+| `sentiment_analysis.py` | Text preparation, scoring and passage analysis. |
+| `requirement5.py` | Contiguous sentence-span analysis and Excel exports. |
+| `visualisations.py` | Charts, keyword summaries and evaluation calculations. |
+| `visualisations/` | Saved graphs and tabular outputs. |
+| `main.py`, `templates/`, `static/` | Flask interface and assets. |
+| `data/` | Review datasets and lexical resources. |
 
-## Team and provenance
+## Interpretation
 
-Team P4-4: Balandra Dyanel Lancea Estillore, Daryl Lai Weng Hong, Derrick Ho Zong Xian, Ang Yi Ting Shermaine, and Cheow Khai Xuan Jordan.
+The review sample can be affected by unequal volumes, historical coverage and selection bias. Dictionary scoring can miss context, negation and sarcasm. Ranking differences and correlations describe this dataset; they do not establish causal effects or definitive airline quality.
 
-Module instructors: Zhang Zhengchen and Eric Lam. Original team repository: [DyanelLancea/Airline-Review-Sentiment-Analysis](https://github.com/DyanelLancea/Airline-Review-Sentiment-Analysis). This portfolio copy retains the original project history and credits.
+## Team and source
+
+**Team P4-4:** Balandra Dyanel Lancea Estillore, Daryl Lai Weng Hong, Derrick Ho Zong Xian, Ang Yi Ting Shermaine, and Cheow Khai Xuan Jordan.
+
+**Module instructors:** Zhang Zhengchen and Eric Lam.
+
+Original repository: [DyanelLancea/Airline-Review-Sentiment-Analysis](https://github.com/DyanelLancea/Airline-Review-Sentiment-Analysis).
