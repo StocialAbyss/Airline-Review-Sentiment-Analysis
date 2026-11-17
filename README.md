@@ -1,6 +1,6 @@
 # Airline Review Sentiment Analysis
 
-**Python � Pandas � Matplotlib � NLP � Exploratory visualisation � Evaluation**
+**Python | Pandas | Matplotlib | NLP | Exploratory visualisation | Evaluation**
 
 A five-person Singapore Institute of Technology academic team project for **INF1002: Programming Fundamentals**, Team P4-4. The project processes airline reviews, applies AFINN lexicon-based sentiment analysis, and explores the results through charts and a Flask review interface.
 
